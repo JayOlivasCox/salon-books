@@ -6,6 +6,7 @@ import { View } from 'react-native';
 import { Button, Chip, ChipRow, ErrorNote, Field, Section, Segmented, Sheet, Txt } from '@/components/ui';
 import { useCurrentBusiness } from '@/context/business';
 import { api } from '@/lib/api';
+import { dayCache } from '@/lib/day-cache';
 import { isoDate, longDate, parseDate } from '@/lib/format';
 import { C, S } from '@/lib/theme';
 import { uuid } from '@/lib/uuid';
@@ -58,6 +59,7 @@ export default function NewAppointment() {
         id: uuid(), stylistId: me, clientId: cid, serviceTypeId,
         startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString(),
       });
+      await dayCache.load(business.id, day, true).catch(() => {});
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

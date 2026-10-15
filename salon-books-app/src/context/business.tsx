@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
 import { api } from '@/lib/api';
+import { dayCache } from '@/lib/day-cache';
 import type { Business, Category, Client, ServiceType } from '@/lib/types';
 import { useAuth } from './auth';
 
@@ -57,6 +58,7 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
 
   // Load the user's businesses whenever the signed-in user changes.
   useEffect(() => {
+    dayCache.clear();
     let live = true;
     (async () => {
       try {
@@ -74,9 +76,11 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
     return () => { live = false; };
   }, [userId]);
 
-  // Load pickers (categories, services, clients) for the current business.
+  // Load pickers (categories, services, clients) for the current business,
+  // and preload the last week of days so the Today screen opens instantly.
   useEffect(() => {
     if (!businessId) return;
+    dayCache.prefetchWeek(businessId);
     let live = true;
     fetchLists(businessId).then((l) => {
       if (!live) return;

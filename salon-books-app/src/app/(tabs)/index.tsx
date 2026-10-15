@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import {
-  Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+  Alert, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,7 +12,7 @@ import { api } from '@/lib/api';
 import { addDays, dayTitle, isoDate, money, parseMoney, sameDay, time } from '@/lib/format';
 import { C, R, S, T } from '@/lib/theme';
 import type { AppointmentView, IncomeEntry, PaymentMethod, PriceSuggestion } from '@/lib/types';
-import { useLoad } from '@/lib/use-load';
+import { useDay } from '@/lib/use-day';
 import { uuid } from '@/lib/uuid';
 
 const METHODS: { value: PaymentMethod; label: string }[] = [
@@ -26,7 +26,7 @@ export default function Today() {
   const { business, me, services } = useCurrentBusiness();
   const [date, setDate] = useState(() => new Date());
   const day = isoDate(date);
-  const { data, error, loading, reload } = useLoad(() => api.daily(business.id, day), [business.id, day]);
+  const { data, error, loading, reload, refresh, refreshing } = useDay(business.id, day);
 
   const [sel, setSel] = useState<Selection>({ kind: 'walkin' });
   const [serviceTypeId, setServiceTypeId] = useState<string>();
@@ -157,7 +157,8 @@ export default function Today() {
         </View>
 
         {/* Schedule */}
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={st.list}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={st.list}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.toner} />}>
           <ErrorNote message={error} />
           {loading && !data && <Loading />}
           {data && data.appointments.length === 0 && walkIns.length === 0 && (
