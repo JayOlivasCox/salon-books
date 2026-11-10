@@ -16,8 +16,8 @@ export default function Settings() {
   const [name, setName] = useState(business.name);
   const [error, setError] = useState<string>();
 
-  const leases = useLoad(() => Promise.all([api.leases(business.id), api.expiringLeases(business.id)]), [business.id]);
-  const members = useLoad(() => api.members(business.id), [business.id]);
+  const leases = useLoad(() => Promise.all([api.leases(business.id), api.expiringLeases(business.id)]), [business.id], { cache: 'leases' });
+  const members = useLoad(() => api.members(business.id), [business.id], { cache: 'members' });
 
   async function update(patch: { name?: string; rentDisplay?: RentDisplay; defaultExpenseSort?: ExpenseSort }) {
     try {

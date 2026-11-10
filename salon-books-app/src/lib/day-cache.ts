@@ -1,14 +1,16 @@
 import { api } from './api';
 import { addDays, isoDate } from './format';
+import { persist } from './persist';
 import type { DailyReport } from './types';
 
 /** A cached day is shown without refetching for this long. */
 const FRESH_MS = 5 * 60_000;
-/** After this long a cached day is dropped entirely. */
-const KEEP_MS = 60 * 60_000;
+/** Days kept in memory; the device cache keeps a week of history beyond that. */
+const MAX_IN_MEMORY = 60;
 /** How many days back to preload when the app opens (plus today). */
 const PREFETCH_DAYS = 7;
 
+/** at = when this copy came from the server. */
 export type DayEntry = { data: DailyReport; at: number };
 
 const entries = new Map<string, DayEntry>();
@@ -16,19 +18,40 @@ const inflight = new Map<string, Promise<DailyReport>>();
 const listeners = new Set<() => void>();
 
 const keyOf = (businessId: string, date: string) => `${businessId}|${date}`;
+const storeKey = (businessId: string, date: string) => `day:${businessId}:${date}`;
 
 function emit() {
   listeners.forEach((l) => l());
 }
 
-function prune() {
-  const now = Date.now();
-  for (const [key, e] of entries) if (now - e.at > KEEP_MS) entries.delete(key);
+function put(key: string, entry: DayEntry) {
+  entries.set(key, entry);
+  if (entries.size > MAX_IN_MEMORY) {
+    let oldestKey: string | undefined;
+    let oldestAt = Infinity;
+    for (const [k, e] of entries) {
+      if (e.at < oldestAt) {
+        oldestAt = e.at;
+        oldestKey = k;
+      }
+    }
+    if (oldestKey) entries.delete(oldestKey);
+  }
+  emit();
+}
+
+/** Pull a saved copy from the device into memory, if there is one. */
+async function hydrate(businessId: string, date: string) {
+  const key = keyOf(businessId, date);
+  if (entries.has(key)) return;
+  const saved = await persist.read<DailyReport>(storeKey(businessId, date));
+  if (saved && !entries.has(key)) put(key, { data: saved.data, at: saved.savedAt });
 }
 
 /**
- * In-memory cache of daily reports. Screens read it through useSyncExternalStore,
- * so a cached day renders instantly and updates when a fresh copy arrives.
+ * Daily reports, cached in memory and on the device. Screens read it through
+ * useSyncExternalStore, so a cached day renders instantly and updates when a
+ * fresh copy arrives.
  */
 export const dayCache = {
   subscribe(listener: () => void) {
@@ -39,8 +62,7 @@ export const dayCache = {
   },
 
   get(businessId: string, date: string): DayEntry | undefined {
-    const e = entries.get(keyOf(businessId, date));
-    return e && Date.now() - e.at <= KEEP_MS ? e : undefined;
+    return entries.get(keyOf(businessId, date));
   },
 
   /** Returns the cached day if it's fresh, otherwise fetches it. force always fetches. */
@@ -51,11 +73,11 @@ export const dayCache = {
     const running = inflight.get(key);
     if (!force && running) return running;
 
-    const p = api.daily(businessId, date)
+    const p = hydrate(businessId, date)
+      .then(() => api.daily(businessId, date))
       .then((data) => {
-        entries.set(key, { data, at: Date.now() });
-        prune();
-        emit();
+        put(key, { data, at: Date.now() });
+        persist.write(storeKey(businessId, date), data);
         return data;
       })
       .finally(() => {

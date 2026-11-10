@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { api } from '@/lib/api';
 import { dayCache } from '@/lib/day-cache';
+import { isOffline, persist, setCacheScope } from '@/lib/persist';
 import type { Business, Category, Client, ServiceType } from '@/lib/types';
 import { useAuth } from './auth';
 
@@ -29,16 +30,36 @@ const BusinessContext = createContext<BusinessState>({
   select: () => {}, refresh: async () => {}, refreshLists: async () => {}, setBusiness: () => {},
 });
 
-async function fetchBusinesses() {
-  const [me, saved] = await Promise.all([api.me(), AsyncStorage.getItem(SELECTED_KEY)]);
-  return { businesses: me.businesses, saved: saved ?? undefined };
+/** Fetch from the server and save a copy; when offline, fall back to the saved copy. */
+async function withSavedCopy<T>(key: string, fetch: () => Promise<T>): Promise<T> {
+  try {
+    const data = await fetch();
+    persist.write(key, data);
+    return data;
+  } catch (e) {
+    if (isOffline(e)) {
+      const saved = await persist.read<T>(key);
+      if (saved) return saved.data;
+    }
+    throw e;
+  }
 }
 
-async function fetchLists(businessId: string) {
-  const [categories, services, clients] = await Promise.all([
-    api.categories(businessId), api.services(businessId), api.clients(businessId),
+async function fetchBusinesses() {
+  const [businesses, saved] = await Promise.all([
+    withSavedCopy('businesses', async () => (await api.me()).businesses),
+    AsyncStorage.getItem(SELECTED_KEY),
   ]);
-  return { categories, services, clients };
+  return { businesses, saved: saved ?? undefined };
+}
+
+function fetchLists(businessId: string) {
+  return withSavedCopy(`lists:${businessId}`, async () => {
+    const [categories, services, clients] = await Promise.all([
+      api.categories(businessId), api.services(businessId), api.clients(businessId),
+    ]);
+    return { categories, services, clients };
+  });
 }
 
 export function BusinessProvider({ children }: { children: ReactNode }) {
@@ -51,6 +72,7 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [services, setServices] = useState<ServiceType[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const previousUser = useRef<string | undefined>(undefined);
 
   const business = businesses.find((b) => b.id === selectedId) ?? businesses[0];
   const businessId = business?.id;
@@ -58,7 +80,13 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
 
   // Load the user's businesses whenever the signed-in user changes.
   useEffect(() => {
+    // Signed out (or switched accounts): wipe the previous user's saved data.
+    if (previousUser.current && previousUser.current !== userId) persist.clearUser(previousUser.current);
+    previousUser.current = userId;
+    setCacheScope(userId);
     dayCache.clear();
+    persist.prune();
+
     let live = true;
     (async () => {
       try {

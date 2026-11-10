@@ -16,9 +16,11 @@ export class ApiError extends Error {
 }
 
 async function token(): Promise<string> {
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) throw new ApiError(401, 'You are signed out. Sign in again.');
-  return data.session.access_token;
+  const { data, error } = await supabase.auth.getSession();
+  if (data.session) return data.session.access_token;
+  // Supabase couldn't refresh the token: almost always means no connection.
+  if (error) throw new ApiError(0, "You're offline. Connect to the internet and try again.");
+  throw new ApiError(401, 'You are signed out. Sign in again.');
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -31,7 +33,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     });
   } catch (e) {
     if (e instanceof ApiError) throw e;
-    throw new ApiError(0, `Can't reach the server at ${API_URL}. Is the backend running?`);
+    throw new ApiError(0, "Can't connect right now. Please try again later.");
   }
   const text = await res.text();
   if (!res.ok) {

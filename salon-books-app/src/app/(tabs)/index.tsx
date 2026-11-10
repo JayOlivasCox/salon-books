@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ErrorNote, Loading, Money, Txt } from '@/components/ui';
+import { ErrorNote, Loading, Money, OfflineNote, Txt } from '@/components/ui';
 import { useCurrentBusiness } from '@/context/business';
 import { api } from '@/lib/api';
 import { addDays, dayTitle, isoDate, money, parseMoney, sameDay, time } from '@/lib/format';
@@ -26,7 +26,7 @@ export default function Today() {
   const { business, me, services } = useCurrentBusiness();
   const [date, setDate] = useState(() => new Date());
   const day = isoDate(date);
-  const { data, error, loading, reload, refresh, refreshing } = useDay(business.id, day);
+  const { data, error, loading, offline, savedAt, reload, refresh, refreshing } = useDay(business.id, day);
 
   const [sel, setSel] = useState<Selection>({ kind: 'walkin' });
   const [serviceTypeId, setServiceTypeId] = useState<string>();
@@ -160,6 +160,7 @@ export default function Today() {
         <ScrollView style={{ flex: 1 }} contentContainerStyle={st.list}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.toner} />}>
           <ErrorNote message={error} />
+          {offline && <OfflineNote savedAt={savedAt} />}
           {loading && !data && <Loading />}
           {data && data.appointments.length === 0 && walkIns.length === 0 && (
             <Txt color={C.inkSoft}>No appointments. Add one, or log a walk-in below.</Txt>

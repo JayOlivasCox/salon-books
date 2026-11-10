@@ -1,10 +1,10 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import type { ReactNode } from 'react';
 import {
   ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
   type StyleProp, type TextInputProps, type TextStyle, type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState, type ReactNode } from 'react';
 
 import { money } from '@/lib/format';
 import { C, R, S, T } from '@/lib/theme';
@@ -49,7 +49,15 @@ export function Txt({ children, style, kind = 'body', color = C.ink, numberOfLin
 export function Money({ value, size = 16, color = C.ink, style }: {
   value: number | null | undefined; size?: number; color?: string; style?: StyleProp<TextStyle>;
 }) {
-  return <Text style={[T.money, { fontSize: size, color }, style]}>{money(value)}</Text>;
+  return (
+    <Text
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.5}
+      style={[T.money, { fontSize: size, color }, style]}>
+      {money(value)}
+    </Text>
+  );
 }
 
 export function Button({ title, onPress, kind = 'primary', loading, disabled, icon, style }: {
@@ -167,10 +175,14 @@ export function Panel({ children, style }: { children: ReactNode; style?: StyleP
 }
 
 export function Stat({ label, value, color = C.ink, size = 22 }: { label: string; value: number; color?: string; size?: number }) {
+  const [width, setWidth] = useState(0);
+  const text = money(value);
+  // Bold digits are about 0.62em wide; shrink until the whole amount fits on one line.
+  const fitted = width ? Math.min(size, width / (text.length * 0.62)) : size;
   return (
-    <View style={{ gap: 2, flex: 1 }}>
+    <View style={{ gap: 2, flex: 1 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       <Txt kind="small" color={C.inkSoft}>{label}</Txt>
-      <Money value={value} size={size} color={color} />
+      <Money value={value} size={fitted} color={color} />
     </View>
   );
 }
@@ -180,6 +192,21 @@ export function ErrorNote({ message }: { message?: string }) {
   return (
     <View style={styles.error}>
       <Txt kind="small" color={C.expense}>{message}</Txt>
+    </View>
+  );
+}
+
+/** Shown when a screen is displaying saved data because the server can't be reached. */
+export function OfflineNote({ savedAt }: { savedAt?: number }) {
+  const when = savedAt
+    ? new Date(savedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : undefined;
+  return (
+    <View style={styles.offline}>
+      <SymbolView name="wifi.slash" size={14} tintColor={C.inkSoft} />
+      <Txt kind="small" color={C.inkSoft} style={{ flex: 1 }}>
+        {when ? `You're offline. Showing data saved ${when}.` : "You're offline. Showing the last data loaded."}
+      </Txt>
     </View>
   );
 }
@@ -215,4 +242,5 @@ export const styles = StyleSheet.create({
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   panel: { backgroundColor: C.surface, borderRadius: R.md, padding: S.lg, gap: S.md },
   error: { backgroundColor: C.expenseSoft, padding: S.md, borderRadius: R.sm },
+  offline: { flexDirection: 'row', alignItems: 'center', gap: S.sm, backgroundColor: C.line, padding: S.md, borderRadius: R.sm },
 });

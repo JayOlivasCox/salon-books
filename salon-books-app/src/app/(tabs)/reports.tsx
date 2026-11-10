@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { BarChart, Donut } from '@/components/charts';
-import { Button, ErrorNote, Loading, Money, Panel, Screen, Section, Segmented, Stat, Stepper, Txt } from '@/components/ui';
+import { Button, ErrorNote, Loading, Money, OfflineNote, Panel, Screen, Section, Segmented, Stat, Stepper, Txt } from '@/components/ui';
 import { useCurrentBusiness } from '@/context/business';
 import { api } from '@/lib/api';
 import { addDays, isoDate, MONTHS, MONTHS_SHORT, parseDate, pct, startOfWeek } from '@/lib/format';
@@ -58,7 +58,7 @@ function Week() {
   const { business } = useCurrentBusiness();
   const [start, setStart] = useState(() => startOfWeek(new Date()));
   const key = isoDate(start);
-  const { data, error } = useLoad(() => api.weekly(business.id, key), [business.id, key]);
+  const { data, error, offline, savedAt } = useLoad(() => api.weekly(business.id, key), [business.id, key], { cache: 'weekly' });
   const end = addDays(start, 6);
   const label = `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} to ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 
@@ -67,6 +67,7 @@ function Week() {
       <Stepper label={label} onPrev={() => setStart(addDays(start, -7))} onNext={() => setStart(addDays(start, 7))}
         onReset={() => setStart(startOfWeek(new Date()))} />
       <ErrorNote message={error} />
+      {offline && <OfflineNote savedAt={savedAt} />}
       {!data ? <Loading /> : (
         <>
           <Totals s={data.summary} showRent={data.showRent} />
@@ -89,7 +90,7 @@ function Month() {
   const { business } = useCurrentBusiness();
   const now = new Date();
   const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() + 1 });
-  const { data, error } = useLoad(() => api.monthly(business.id, ym.y, ym.m), [business.id, ym.y, ym.m]);
+  const { data, error, offline, savedAt } = useLoad(() => api.monthly(business.id, ym.y, ym.m), [business.id, ym.y, ym.m], { cache: 'monthly' });
   const shift = (n: number) => {
     const d = new Date(ym.y, ym.m - 1 + n, 1);
     setYm({ y: d.getFullYear(), m: d.getMonth() + 1 });
@@ -101,6 +102,7 @@ function Month() {
       <Stepper label={`${MONTHS[ym.m - 1]} ${ym.y}`} onPrev={() => shift(-1)} onNext={() => shift(1)}
         onReset={() => setYm({ y: now.getFullYear(), m: now.getMonth() + 1 })} />
       <ErrorNote message={error} />
+      {offline && <OfflineNote savedAt={savedAt} />}
       {!data ? <Loading /> : (
         <>
           <Totals s={data.summary} showRent={data.showRent} />
@@ -162,7 +164,7 @@ function Year() {
   const { business } = useCurrentBusiness();
   const thisYear = new Date().getFullYear();
   const [year, setYear] = useState(thisYear);
-  const { data, error } = useLoad(() => api.yearly(business.id, year), [business.id, year]);
+  const { data, error, offline, savedAt } = useLoad(() => api.yearly(business.id, year), [business.id, year], { cache: 'yearly' });
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string>();
 
@@ -185,6 +187,7 @@ function Year() {
       <Stepper label={String(year)} onPrev={() => setYear(year - 1)} onNext={() => setYear(year + 1)}
         onReset={() => setYear(thisYear)} />
       <ErrorNote message={error} />
+      {offline && <OfflineNote savedAt={savedAt} />}
       {!data || !p ? <Loading /> : (
         <>
           <Totals s={data.summary} showRent />

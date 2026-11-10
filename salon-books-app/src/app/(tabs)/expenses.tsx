@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Chip, ChipRow, ErrorNote, Loading, Money, Stepper, Txt } from '@/components/ui';
+import { Chip, ChipRow, ErrorNote, Loading, Money, OfflineNote, Stepper, Txt } from '@/components/ui';
 import { useCurrentBusiness } from '@/context/business';
 import { api } from '@/lib/api';
 import { isoDate, MONTHS, shortDate } from '@/lib/format';
@@ -31,9 +31,10 @@ export default function Expenses() {
   const to = isoDate(new Date(month.getFullYear(), month.getMonth() + 1, 0));
   const dir = sort === 'VENDOR' || sort === 'CATEGORY' ? 'asc' : 'desc';
 
-  const { data, error, loading } = useLoad(
+  const { data, error, offline, savedAt } = useLoad(
     () => api.expenses(business.id, { from, to, categoryId, vendor: vendor.trim() || undefined, sort, dir }),
     [business.id, from, to, categoryId, vendor, sort],
+    { cache: 'expenses' },
   );
 
   const cat = (id?: string) => categories.find((c) => c.id === id);
@@ -53,7 +54,7 @@ export default function Expenses() {
               onPrev={() => shift(-1)} onNext={() => shift(1)}
               onReset={() => setMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))} />
             <View style={{ alignItems: 'center', gap: 2 }}>
-              <Money value={total} size={34} color={C.expense} />
+              {data ? <Money value={total} size={34} color={C.expense} /> : <Loading />}
               <Txt kind="small" color={C.inkSoft}>
                 {data ? `${data.totalItems} ${data.totalItems === 1 ? 'expense' : 'expenses'}` : ' '}
               </Txt>
@@ -77,7 +78,7 @@ export default function Expenses() {
               </ChipRow>
             </View>
             <ErrorNote message={error} />
-            {loading && !data && <Loading />}
+            {offline && <OfflineNote savedAt={savedAt} />}
           </View>
         }
         ListEmptyComponent={data ? (
