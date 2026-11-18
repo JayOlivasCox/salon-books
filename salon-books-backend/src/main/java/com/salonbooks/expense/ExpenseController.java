@@ -20,7 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -78,6 +80,17 @@ public class ExpenseController extends SyncableController<Expense, ExpenseDto> {
     public List<String> vendors(@PathVariable("businessId") UUID businessId, @AuthenticationPrincipal Jwt jwt) {
         access.requireMember(businessId, jwt);
         return expenses.vendors(businessId);
+    }
+
+    /** Category to pre-select for a vendor, based on past expenses. categoryId is null if there's no history. */
+    @GetMapping("/vendor-category")
+    public Map<String, UUID> vendorCategory(@PathVariable("businessId") UUID businessId,
+                                            @RequestParam("vendor") String vendor,
+                                            @AuthenticationPrincipal Jwt jwt) {
+        access.requireMember(businessId, jwt);
+        Map<String, UUID> out = new HashMap<>();
+        out.put("categoryId", vendor.isBlank() ? null : expenses.topCategoryForVendor(businessId, vendor).orElse(null));
+        return out;
     }
 
     /** Short-lived URL to display the receipt photo. */

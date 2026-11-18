@@ -97,6 +97,7 @@ export default function Expenses() {
                   {shortDate(item.expenseDate)}, {c?.name ?? 'Uncategorized'}{item.itemized ? `, ${item.items.length} items` : ''}
                 </Txt>
               </View>
+              {item.receiptPath && <SymbolView name="paperclip" size={14} tintColor={C.inkFaint} />}
               <Money value={item.total} />
             </Pressable>
           );

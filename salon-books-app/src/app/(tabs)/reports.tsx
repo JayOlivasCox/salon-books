@@ -116,7 +116,7 @@ function Month() {
             </Panel>
           </Section>
 
-          <Section title="Where the money went">
+          <Section title="Expenses by category">
             <Panel>
               {data.summary.byCategory.length === 0 && !data.showRent ? (
                 <Txt kind="small" color={C.inkSoft}>No expenses this month.</Txt>

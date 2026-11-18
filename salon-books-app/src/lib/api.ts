@@ -3,7 +3,7 @@ import { File, Paths } from 'expo-file-system';
 import { supabase } from './supabase';
 import type {
   AppointmentView, Business, Category, Client, DailyReport, Expense, ExpenseSort, IncomeEntry, Lease, Member,
-  MonthlyReport, Page, PriceSuggestion, RentDisplay, ServiceType, WeeklyReport, YearlyReport,
+  MonthlyReport, Page, ParsedReceipt, PriceSuggestion, RentDisplay, ServiceType, WeeklyReport, YearlyReport,
 } from './types';
 
 /** Simulator: localhost works. Real iPhone: use your Mac's local IP, e.g. http://192.168.1.20:8080 */
@@ -19,7 +19,7 @@ async function token(): Promise<string> {
   const { data, error } = await supabase.auth.getSession();
   if (data.session) return data.session.access_token;
   // Supabase couldn't refresh the token: almost always means no connection.
-  if (error) throw new ApiError(0, "You're offline. Connect to the internet and try again.");
+  if (error) throw new ApiError(0, "Can't connect right now. Please try again later.");
   throw new ApiError(401, 'You are signed out. Sign in again.');
 }
 
@@ -104,10 +104,19 @@ export const api = {
   expense: (b: string, id: string) => get<Expense>(`/api/businesses/${b}/expenses/${id}`),
   saveExpense: (b: string, e: {
     id: string; expenseDate: string; vendor?: string; total: number; categoryId?: string; notes?: string;
-    receiptPath?: string; items: { id?: string; description: string; amount: number; categoryId?: string }[];
+    receiptPath?: string; ocrRawText?: string;
+    items: { id?: string; description: string; amount: number; categoryId?: string }[];
   }) => put<Expense>(`/api/businesses/${b}/expenses/${e.id}`, { ...e, clientModifiedAt: now() }),
   deleteExpense: (b: string, id: string) => del(`/api/businesses/${b}/expenses/${id}`),
   vendors: (b: string) => get<string[]>(`/api/businesses/${b}/expenses/vendors`),
+  receiptUrl: (b: string, expenseId: string) =>
+    get<{ url: string; expiresAt: string }>(`/api/businesses/${b}/expenses/${expenseId}/receipt-url`),
+  receiptUploadUrl: (b: string, expenseId: string, fileExtension: string) =>
+    post<{ uploadUrl: string; path: string }>(`/api/businesses/${b}/receipts/upload-url`, { expenseId, fileExtension }),
+  parseReceipt: (b: string, text: string) => post<ParsedReceipt>(`/api/businesses/${b}/receipts/parse`, { text }),
+  /** Vendor's most-used category, from past expenses. */
+  vendorCategory: (b: string, vendor: string) =>
+    get<{ categoryId?: string }>(`/api/businesses/${b}/expenses/vendor-category?vendor=${encodeURIComponent(vendor)}`),
 
   leases: (b: string) => get<Lease[]>(`/api/businesses/${b}/leases`),
   expiringLeases: (b: string) => get<Lease[]>(`/api/businesses/${b}/leases/expiring`),

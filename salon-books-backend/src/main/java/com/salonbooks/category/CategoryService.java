@@ -20,28 +20,18 @@ public class CategoryService {
     private record Seed(String name, ScheduleCLine line, String color) {
     }
 
-    // Starting point for a booth-rent stylist. Users can rename, recolor, remap or add their own.
+    // Nine broad categories for a booth-rent stylist. Each maps to one Schedule C line for the tax PDF;
+    // users can rename, recolor or remap them. Keep in sync with V3__rename_categories.sql.
     private static final List<Seed> DEFAULTS = List.of(
-        new Seed("Color & Chemicals", SUPPLIES, "#8E44AD"),
-        new Seed("Backbar Products", SUPPLIES, "#3498DB"),
-        new Seed("Tools & Small Equipment", SUPPLIES, "#16A085"),
-        new Seed("Retail Products (resale)", COGS, "#27AE60"),
-        new Seed("Large Equipment", DEPRECIATION, "#2C3E50"),
+        new Seed("Supplies", SUPPLIES, "#8E44AD"),
+        new Seed("Retail Resale", COGS, "#27AE60"),
+        new Seed("Equipment", DEPRECIATION, "#2C3E50"),
         new Seed("Booth Rent", RENT_OTHER_PROPERTY, "#E67E22"),
-        new Seed("Licenses & Permits", TAXES_LICENSES, "#C0392B"),
-        new Seed("Insurance", INSURANCE, "#7F8C8D"),
-        new Seed("Education & Classes", OTHER, "#F1C40F"),
-        new Seed("Advertising & Marketing", ADVERTISING, "#E84393"),
-        new Seed("Card & App Fees", COMMISSIONS_FEES, "#00B894"),
-        new Seed("Booking Software", OFFICE_EXPENSE, "#0984E3"),
-        new Seed("Phone & Internet", UTILITIES, "#6C5CE7"),
-        new Seed("Car & Mileage", CAR_TRUCK, "#636E72"),
-        new Seed("Laundry & Cleaning", OTHER, "#74B9FF"),
-        new Seed("Accountant & Legal", LEGAL_PROFESSIONAL, "#A29BFE"),
-        new Seed("Repairs", REPAIRS, "#D63031"),
-        new Seed("Travel", TRAVEL, "#00CEC9"),
-        new Seed("Meals", MEALS, "#FDCB6E"),
-        new Seed("Other", OTHER, "#B2BEC3")
+        new Seed("Marketing", ADVERTISING, "#E84393"),
+        new Seed("Fees & Subscriptions", COMMISSIONS_FEES, "#0984E3"),
+        new Seed("Licenses & Insurance", TAXES_LICENSES, "#C0392B"),
+        new Seed("Travel & Food", TRAVEL, "#00A8A8"),
+        new Seed("Training & Other", OTHER, "#B2BEC3")
     );
 
     @Transactional

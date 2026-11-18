@@ -23,7 +23,7 @@
       "package": "com.salonbooks.app"
     },
     "web": {
-      "output": "single",
+      "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -40,12 +40,28 @@
         "expo-camera",
         {
           "cameraPermission": "Salon Books uses the camera to scan partner invite codes and receipts.",
-          "recordAudioAndroid": false
+          "recordAudioAndroid": false,
+          "microphonePermission": false
         }
       ],
       "@react-native-community/datetimepicker",
       "expo-sharing",
-      ["expo-build-properties", { "ios": { "enableSceneSupport": true } }]
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Salon Books uses your photos to attach receipts to expenses.",
+          "cameraPermission": "Salon Books uses the camera to scan receipts and partner invite codes.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false,

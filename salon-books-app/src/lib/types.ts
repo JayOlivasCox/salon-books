@@ -136,3 +136,8 @@ export interface PriceSuggestion {
 }
 
 export interface Page<T> { items: T[]; page: number; size: number; totalItems: number; totalPages: number }
+
+export interface ParsedReceipt {
+  vendor?: string; date?: string; total?: number; subtotal?: number; tax?: number;
+  items: { description: string; amount: number }[];
+}
