@@ -19,13 +19,13 @@ export default function RootLayout() {
 }
 
 function Gate() {
-  const { session, loading } = useAuth();
+  const { session, loading, mfaRequired } = useAuth();
   const { business, loading: bizLoading, error, refresh, businesses } = useBusiness();
 
   if (loading || (session && bizLoading && businesses.length === 0)) {
     return <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center' }}><Loading /></View>;
   }
-  if (session && error && businesses.length === 0) {
+  if (session && !mfaRequired && error && businesses.length === 0) {
     return (
       <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', padding: S.lg, gap: S.md }}>
         <ErrorNote message={error} />
@@ -35,7 +35,9 @@ function Gate() {
   }
 
   const signedIn = !!session;
-  const ready = signedIn && !!business;
+  // Password accepted but 2FA code still needed: only the code screen is reachable.
+  const verified = signedIn && !mfaRequired;
+  const ready = verified && !!business;
 
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }}>
@@ -43,7 +45,11 @@ function Gate() {
         <Stack.Screen name="sign-in" />
       </Stack.Protected>
 
-      <Stack.Protected guard={signedIn && !business}>
+      <Stack.Protected guard={signedIn && mfaRequired}>
+        <Stack.Screen name="two-factor-verify" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={verified && !business}>
         <Stack.Screen name="setup" />
         <Stack.Screen name="join" options={{ presentation: 'modal' }} />
       </Stack.Protected>
@@ -55,6 +61,7 @@ function Gate() {
         <Stack.Screen name="lease" options={{ presentation: 'modal' }} />
         <Stack.Screen name="invite" options={{ presentation: 'modal' }} />
         <Stack.Screen name="services" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="two-factor" options={{ presentation: 'modal' }} />
       </Stack.Protected>
     </Stack>
   );

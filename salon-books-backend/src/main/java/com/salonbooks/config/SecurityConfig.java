@@ -2,6 +2,7 @@ package com.salonbooks.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -14,6 +15,7 @@ import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
 import javax.crypto.spec.SecretKeySpec;
@@ -22,19 +24,22 @@ import java.util.Collection;
 
 /**
  * The mobile app signs in with Supabase Auth (email, Google, Apple) and sends the
- * Supabase access token as "Authorization: Bearer ...". We only verify it here.
+ * Supabase access token as "Authorization: Bearer ...". We verify it here, then
+ * MfaFilter requires the two-factor step for users who turned 2FA on.
  */
 @Configuration
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, JdbcTemplate jdbc) throws Exception {
         http.csrf(c -> c.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(a -> a
                 .requestMatchers("/actuator/health").permitAll()
                 .anyRequest().authenticated())
-            .oauth2ResourceServer(o -> o.jwt(Customizer.withDefaults()));
+            .oauth2ResourceServer(o -> o.jwt(Customizer.withDefaults()))
+            // Runs after the token is verified: users with 2FA on need an "aal2" token.
+            .addFilterAfter(new MfaFilter(jdbc), BearerTokenAuthenticationFilter.class);
         return http.build();
     }
 

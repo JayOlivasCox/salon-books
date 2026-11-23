@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Alert, View } from 'react-native';
 
 import { Button, Chip, ChipRow, ErrorNote, Field, Panel, Screen, Section, Segmented, Txt } from '@/components/ui';
+import { useAuth } from '@/context/auth';
 import { useCurrentBusiness } from '@/context/business';
 import { api } from '@/lib/api';
 import { isoDate, longDate, money } from '@/lib/format';
@@ -15,6 +16,35 @@ export default function Settings() {
   const { business, me, services, setBusiness, refresh } = useCurrentBusiness();
   const [name, setName] = useState(business.name);
   const [error, setError] = useState<string>();
+  const { mfaEnabled } = useAuth();
+  const [turningOff, setTurningOff] = useState(false);
+
+  function turnOffMfa() {
+    Alert.alert('Turn off two-factor authentication?', 'Signing in will only need your password.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Turn off', style: 'destructive',
+        onPress: async () => {
+          setTurningOff(true);
+          try {
+            const { data, error: listError } = await supabase.auth.mfa.listFactors();
+            if (listError) throw listError;
+            for (const f of data.totp) {
+              const { error: e } = await supabase.auth.mfa.unenroll({ factorId: f.id });
+              if (e) throw e;
+            }
+            // Pull the updated account so the app sees 2FA is off.
+            await supabase.auth.refreshSession();
+            setError(undefined);
+          } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+          } finally {
+            setTurningOff(false);
+          }
+        },
+      },
+    ]);
+  }
 
   const leases = useLoad(() => Promise.all([api.leases(business.id), api.expiringLeases(business.id)]), [business.id], { cache: 'leases' });
   const members = useLoad(() => api.members(business.id), [business.id], { cache: 'members' });
@@ -95,6 +125,20 @@ export default function Settings() {
             {services.length ? services.map((s) => s.name).join(', ') : 'No services yet.'}
           </Txt>
           <Button kind="secondary" title="Edit services" onPress={() => router.push('/services')} />
+        </Panel>
+      </Section>
+
+      <Section title="Security">
+        <Panel>
+          <Txt>{mfaEnabled ? 'Two-factor authentication is on.' : 'Two-factor authentication is off.'}</Txt>
+          <Txt kind="small" color={C.inkSoft}>
+            {mfaEnabled
+              ? 'Signing in needs your password and a code from your authenticator app.'
+              : 'Add a code from an authenticator app at sign-in, so a stolen password isn’t enough.'}
+          </Txt>
+          {mfaEnabled
+            ? <Button kind="danger" title="Turn off 2FA" onPress={turnOffMfa} loading={turningOff} />
+            : <Button kind="secondary" icon="lock.shield" title="Turn on 2FA" onPress={() => router.push('/two-factor')} />}
         </Panel>
       </Section>
 

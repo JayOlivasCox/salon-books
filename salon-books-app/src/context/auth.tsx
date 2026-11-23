@@ -2,11 +2,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
+import { needsCode, verifiedTotp } from '@/lib/mfa';
 import { supabase } from '@/lib/supabase';
 
-type AuthState = { session: Session | null; loading: boolean; userId?: string };
+type AuthState = {
+  session: Session | null;
+  loading: boolean;
+  /** Set only once sign-in is complete (including the 2FA code, if the user has 2FA on). */
+  userId?: string;
+  /** Password accepted, waiting for the authenticator code. */
+  mfaRequired: boolean;
+  /** The user has an authenticator app set up. */
+  mfaEnabled: boolean;
+};
 
-const AuthContext = createContext<AuthState>({ session: null, loading: true });
+const AuthContext = createContext<AuthState>({ session: null, loading: true, mfaRequired: false, mfaEnabled: false });
 
 /**
  * The session Supabase saved on the device. Used when the phone is offline and the
@@ -40,8 +50,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => data.subscription.unsubscribe();
   }, []);
 
+  const mfaRequired = needsCode(session);
   return (
-    <AuthContext.Provider value={{ session, loading, userId: session?.user.id }}>
+    <AuthContext.Provider value={{
+      session,
+      loading,
+      userId: mfaRequired ? undefined : session?.user.id,
+      mfaRequired,
+      mfaEnabled: !!verifiedTotp(session),
+    }}>
       {children}
     </AuthContext.Provider>
   );
