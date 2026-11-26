@@ -24,6 +24,12 @@ export default function Expenses() {
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
   const [sort, setSort] = useState<ExpenseSort>(business.defaultExpenseSort);
+  // When the default changes in Settings, switch to it (this tab stays open in the background).
+  const [lastDefault, setLastDefault] = useState(business.defaultExpenseSort);
+  if (lastDefault !== business.defaultExpenseSort) {
+    setLastDefault(business.defaultExpenseSort);
+    setSort(business.defaultExpenseSort);
+  }
   const [categoryId, setCategoryId] = useState<string>();
   const [vendor, setVendor] = useState('');
 
