@@ -50,11 +50,14 @@ export default function Settings() {
   const members = useLoad(() => api.members(business.id), [business.id], { cache: 'members' });
 
   async function update(patch: { name?: string; rentDisplay?: RentDisplay; defaultExpenseSort?: ExpenseSort }) {
+    const before = business;
+    setBusiness({ ...business, ...patch }); // show the change right away
     try {
       setBusiness(await api.updateSettings(business.id, patch));
       setError(undefined);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setBusiness(before); // undo, and say why where the user can see it
+      Alert.alert("Couldn't save that setting", e instanceof Error ? e.message : String(e));
     }
   }
 
